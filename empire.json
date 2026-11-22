@@ -1,0 +1,36 @@
+{
+  "eco_speed": 10,
+  "player_class": "collector",
+  "alliance_class": "trader",
+  "geologist": false,
+  "all_staff": false,
+  "trade_ratio": [3.0, 2.0, 1.0],
+
+  "plasma_tech": 18,
+  "astro_tech": 21,
+
+  "crawler_percent": 1.5,
+  "limit_crawlers_to_owned": false,
+
+  "lf_global_prod": [0.3367, 0.3568, 0.3651],
+  "lf_class_bonus": 0.0,
+  "lf_crawler_bonus": 0.0,
+
+  "planets": [
+    {"name": "Centi",  "pos": 8, "max_temp": 33, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Micro",  "pos": 8, "max_temp": 48, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Milli",  "pos": 8, "max_temp": 59, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Nano",   "pos": 8, "max_temp": 47, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Atto",   "pos": 8, "max_temp": 38, "mines": [42, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Pico",   "pos": 8, "max_temp": 57, "mines": [42, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Zepto",  "pos": 8, "max_temp": 66, "mines": [42, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Femto",  "pos": 8, "max_temp": 67, "mines": [42, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Yocto",  "pos": 8, "max_temp": 36, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Ronto",  "pos": 8, "max_temp": 53, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Quecto", "pos": 8, "max_temp": 69, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},
+    {"name": "Deca",   "pos": 8, "max_temp": 49, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]}
+  ],
+
+  "plan_steps": 130,
+  "new_planet": {"pos": 8, "max_temp": 50}
+}

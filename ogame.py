@@ -1,64 +1,95 @@
 import copy
+import json
 import math
+import os
+import sys
 
 # ==============================================================================
-#  UPDATE YOUR EMPIRE INFORMATION HERE (Only edit inside CONFIG)
+#  YOUR EMPIRE DATA LIVES IN empire.json (next to this script)
+#  Run:  python3 ogame.py              (uses empire.json)
+#        python3 ogame.py other.json   (uses another file)
+#
+#  empire.json keys:
+#   --- Universe & account ---
+#   eco_speed               Economy speed of your universe (e.g. 1, 4, 8, 10)
+#   player_class            "collector", "discoverer", "general" or "none"
+#   alliance_class          "trader", "explorer", "warrior" or "none"
+#   geologist               true if Geologist is active
+#   all_staff               true if Commanding Staff is active (includes the Geologist)
+#   trade_ratio             Your trade rate [metal, crystal, deut], e.g. [3.0, 2.0, 1.0]
+#   --- Research ---
+#   plasma_tech             Current Plasma Technology level
+#   astro_tech              Current Astrophysics level
+#   --- Crawlers ---
+#   crawler_percent         1.0 = 100%, 1.5 = 150% overload (Collector only)
+#   limit_crawlers_to_owned false = assume max crawlers; true = use each planet's "crawlers"
+#   --- Lifeform bonuses (decimals, 0.0 if unused) ---
+#   lf_global_prod          [metal, crystal, deut] production bonus, e.g. [0.12, 0.10, 0.08]
+#   lf_class_bonus          LF boost to class bonuses, e.g. 0.15 for +15%
+#   lf_crawler_bonus        LF boost to crawler production, e.g. 0.20 for +20%
+#   --- Planets (update "mines" after each mine upgrade) ---
+#   planets                 List of planets, each with:
+#     name                  Any label
+#     pos                   Slot in the system, 1-15 (metal/crystal slot bonus)
+#     max_temp              Max temperature in °C (deut output)
+#     mines                 [metal mine, crystal mine, deut synth] levels
+#     crawlers              Crawlers on the planet (only used if limit_crawlers_to_owned)
+#     lf_planet_prod        Optional planet LF building bonus [metal, crystal, deut]
+#   --- Build order planner (optional) ---
+#   plan_steps              How many single upgrades to plan ahead (default 150)
+#   new_planet              Assumed {"pos", "max_temp"} of planets colonized after Astrophysics
+#   --- Server constants (optional, only for custom universes) ---
+#   miner_prod_bonus, miner_add_crawler, crawler_boost_per_unit, crawler_max_boost
 # ==============================================================================
-CONFIG = {
-    # --- 1. UNIVERSE & ACCOUNT SETTINGS (Rarely change) ---
-    "eco_speed": 10,                    # Your universe's economy speed (e.g., 1, 4, 8, 10)
-    "player_class": "collector",       # "collector", "discoverer", "general", or "none"
-    "alliance_class": "trader",        # "trader", "explorer", "warrior", or "none"
-    "geologist": False,                 # True if Geologist is active, otherwise False
-    "all_staff": False,                 # True if Commanding Staff is active, otherwise False
-    "trade_ratio": (3.0, 2.0, 1.0),    # Your trade rate: (Metal, Crystal, Deuterium)
-
-    # --- 2. RESEARCH LEVELS (Update whenever you finish a research) ---
-    "plasma_tech": 18,                 # Current Plasma Technology level
-    "astro_tech": 21,                  # Current Astrophysics level
-
-    # --- 3. CRAWLER SETTINGS ---
-    "crawler_percent": 1.5,            # 1.0 = 100%, 1.5 = 150% overload (Collector only)
-    "limit_crawlers_to_owned": False,  # False = assume max crawlers; True = use "crawlers" count below
-
-    # --- 4. LIFEFORM GLOBAL BONUSES (Optional - leave at 0.0 if unused) ---
-    "lf_global_prod": (0.3367, 0.3568, 0.3651), # Global LF tech bonus as decimals: (Metal%, Crystal%, Deut%) e.g. (0.12, 0.10, 0.08)
-    "lf_class_bonus": 0.0,             # Global LF character class boost as decimal (e.g. 0.15 for +15%)
-    "lf_crawler_bonus": 0.0,           # LF bonus to crawler production as decimal (e.g. 0.20 for +20%)
-
-    # --- 5. YOUR PLANETS (Update "mines" tuple whenever you upgrade a mine) ---
-    # Format:
-    #   "name":           Any label you want
-    #   "pos":            Planet slot position in system (1 to 15) — affects Metal/Crystal slot bonus
-    #   "max_temp":       Planet's max temperature in °C (shown in Overview) — affects Deut output
-    #   "mines":          (Metal Mine Level, Crystal Mine Level, Deuterium Synth Level)
-    #   "crawlers":       Number of crawlers on the planet (only used if limit_crawlers_to_owned is True)
-    #   "lf_planet_prod": Optional planet-specific LF building bonus as decimals: (Metal%, Crystal%, Deut%)
-    "planets": [
-        {"name": "Centi",  "pos": 8, "max_temp": 33, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Micro",  "pos": 8, "max_temp": 48, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Milli",  "pos": 8, "max_temp": 59, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Nano",  "pos": 8, "max_temp": 47, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Atto",  "pos": 8, "max_temp": 38, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Pico",  "pos": 8, "max_temp": 57, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Zepto",  "pos": 8, "max_temp": 66, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Femto",  "pos": 8, "max_temp": 67, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Yocto",  "pos": 8, "max_temp": 36, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Ronto", "pos": 8, "max_temp": 53, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Quecto", "pos": 8, "max_temp": 69, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Deca", "pos": 8, "max_temp": 49, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
-    ],
-
-    # --- 6. BUILD ORDER PLANNER ---
-    "plan_steps": 130,                 # How many single upgrades to plan ahead
-    "new_planet": {"pos": 8, "max_temp": 50},  # Assumed slot and max temp of planets colonized after Astrophysics
-
-    # --- 7. SERVER CONSTANTS (Do not change unless playing a custom/special universe) ---
+DEFAULTS = {
+    "geologist": False,
+    "all_staff": False,
+    "trade_ratio": [3.0, 2.0, 1.0],
+    "crawler_percent": 1.0,
+    "limit_crawlers_to_owned": False,
+    "lf_global_prod": [0.0, 0.0, 0.0],
+    "lf_class_bonus": 0.0,
+    "lf_crawler_bonus": 0.0,
+    "plan_steps": 150,
+    "new_planet": {"pos": 8, "max_temp": 50},
+    # Server constants
     "miner_prod_bonus": 0.25,
     "miner_add_crawler": 0.50,
     "crawler_boost_per_unit": 0.0002,
     "crawler_max_boost": 0.50,
 }
+REQUIRED_KEYS = ["eco_speed", "player_class", "alliance_class", "plasma_tech", "astro_tech", "planets"]
+REQUIRED_PLANET_KEYS = ["name", "pos", "max_temp", "mines"]
+
+def load_config(path):
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Empire file not found: {path}")
+    except json.JSONDecodeError as e:
+        sys.exit(f"{path} is not valid JSON (line {e.lineno}, column {e.colno}): {e.msg}")
+
+    missing = [k for k in REQUIRED_KEYS if k not in data]
+    if missing:
+        sys.exit(f"{path} is missing: {', '.join(missing)}")
+    if not data["planets"]:
+        sys.exit(f"{path} has no planets")
+    for i, p in enumerate(data["planets"], 1):
+        missing = [k for k in REQUIRED_PLANET_KEYS if k not in p]
+        if missing:
+            sys.exit(f"Planet #{i} in {path} is missing: {', '.join(missing)}")
+        if len(p["mines"]) != 3:
+            sys.exit(f"Planet {p['name']}: mines must be [metal, crystal, deut]")
+        if not 1 <= p["pos"] <= 15:
+            sys.exit(f"Planet {p['name']}: pos must be between 1 and 15")
+        p["mines"] = tuple(p["mines"])
+        p.setdefault("crawlers", 0)
+        p.setdefault("lf_planet_prod", [0.0, 0.0, 0.0])
+
+    cfg = copy.deepcopy(DEFAULTS)
+    cfg.update(data)
+    return cfg
 
 # ==============================================================================
 #  CALCULATION ENGINE (Do not edit below this line)
@@ -365,6 +396,8 @@ def plan_build_order(cfg):
 
 
 if __name__ == "__main__":
-    get_best_roi(CONFIG)
+    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "empire.json")
+    cfg = load_config(sys.argv[1] if len(sys.argv) > 1 else default_path)
+    get_best_roi(cfg)
     print()
-    plan_build_order(CONFIG)
+    plan_build_order(cfg)

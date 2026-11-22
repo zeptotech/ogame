@@ -391,9 +391,6 @@ def plan_build_order(cfg):
         if ln["start"] != ln["end"]:
             payback = "≤ " + payback
         print(f"{steps_txt:<9} {text:<80} {payback:>12} {format(ln['save'], '.1f') + ' days':>11}")
-    print("\nPAYBACK: of the step (or the slowest step in a grouped line).")
-    print("SAVE: days of your total production needed to pay for the line (summed for grouped lines).")
-
 
 if __name__ == "__main__":
     default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "empire.json")

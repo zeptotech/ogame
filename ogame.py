@@ -140,8 +140,11 @@ def planet_hourly_prod(mine_lvls, planet, cfg, plasma_override=None):
         ))
     return totals
 
-def roi_mine(tech_id, to_lvl, planet, cfg):
+def roi_mine(tech_id, to_lvl, planet, cfg, from_lvl=None):
+    # from_lvl: level assumed already built (defaults to the planet's current level)
     curr_lvls = list(planet["mines"])
+    if from_lvl is not None:
+        curr_lvls[tech_id - 1] = from_lvl
     new_lvls = list(curr_lvls)
     new_lvls[tech_id - 1] = to_lvl
 
@@ -158,8 +161,8 @@ def roi_mine(tech_id, to_lvl, planet, cfg):
 
     return (cost_mse * 3600) / prod_diff_mse
 
-def roi_plasma(to_lvl, cfg):
-    plasma = cfg["plasma_tech"]
+def roi_plasma(to_lvl, cfg, from_lvl=None):
+    plasma = cfg["plasma_tech"] if from_lvl is None else from_lvl
     plasma_bonus = [p * (to_lvl - plasma) for p in PLASMATECH_BONUS]
     trade_rate = cfg["trade_ratio"]
     prod_diff_mse = 0
@@ -214,19 +217,24 @@ def get_best_roi(cfg):
         for idx, tech_id in enumerate([1, 2, 3]):
             curr = p["mines"][idx]
             for target_lvl in range(curr + 1, max_mines[idx] + 6):
-                sec = roi_mine(tech_id, target_lvl, p, cfg)
-                results.append((sec, f"{p['name']} (Pos {p['pos']}): {BUILDING_INFO[tech_id]['name']} {curr} -> {target_lvl}"))
+                # One level per row: payback of this level alone, assuming the previous levels are built
+                sec = roi_mine(tech_id, target_lvl, p, cfg, from_lvl=target_lvl - 1)
+                results.append((sec, f"{p['name']} (Pos {p['pos']}): {BUILDING_INFO[tech_id]['name']} {target_lvl - 1} -> {target_lvl}"))
 
     p_lvl = cfg["plasma_tech"]
     for step in range(1, 6):
-        sec = roi_plasma(p_lvl + step, cfg)
-        results.append((sec, f"Research: Plasma Tech {p_lvl} -> {p_lvl + step}"))
+        sec = roi_plasma(p_lvl + step, cfg, from_lvl=p_lvl + step - 1)
+        results.append((sec, f"Research: Plasma Tech {p_lvl + step - 1} -> {p_lvl + step}"))
 
     astro = cfg["astro_tech"]
     start_step = 1 if (astro + 1) % 2 == 1 else 2
+    # One new planet slot per row: from the previous row's level to the next odd level
+    prev_lvl = astro
     for step in range(start_step, 11, 2):
-        sec = roi_astro(astro + 1, astro + step, avg_mines, total_prod_mse, cfg)
-        results.append((sec, f"Research: Astrophysics {astro} -> {astro + step}"))
+        to_lvl = astro + step
+        sec = roi_astro(prev_lvl + 1, to_lvl, avg_mines, total_prod_mse, cfg)
+        results.append((sec, f"Research: Astrophysics {prev_lvl} -> {to_lvl}"))
+        prev_lvl = to_lvl
 
     results.sort(key=lambda x: x[0])
 

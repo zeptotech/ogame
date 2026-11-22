@@ -219,7 +219,7 @@ def get_best_roi(cfg):
             for target_lvl in range(curr + 1, max_mines[idx] + 6):
                 # One level per row: payback of this level alone, assuming the previous levels are built
                 sec = roi_mine(tech_id, target_lvl, p, cfg, from_lvl=target_lvl - 1)
-                results.append((sec, f"{p['name']} (Pos {p['pos']}): {BUILDING_INFO[tech_id]['name']} {target_lvl - 1} -> {target_lvl}"))
+                results.append((sec, f"{p['name']}: {BUILDING_INFO[tech_id]['name']} {target_lvl - 1} -> {target_lvl}"))
 
     p_lvl = cfg["plasma_tech"]
     for step in range(1, 6):

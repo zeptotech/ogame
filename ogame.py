@@ -1,3 +1,4 @@
+import copy
 import math
 
 # ==============================================================================
@@ -48,7 +49,11 @@ CONFIG = {
         {"name": "Deca", "pos": 8, "max_temp": 49, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
     ],
 
-    # --- 6. SERVER CONSTANTS (Do not change unless playing a custom/special universe) ---
+    # --- 6. BUILD ORDER PLANNER ---
+    "plan_steps": 130,                 # How many single upgrades to plan ahead
+    "new_planet": {"pos": 8, "max_temp": 50},  # Assumed slot and max temp of planets colonized after Astrophysics
+
+    # --- 7. SERVER CONSTANTS (Do not change unless playing a custom/special universe) ---
     "miner_prod_bonus": 0.25,
     "miner_add_crawler": 0.50,
     "crawler_boost_per_unit": 0.0002,
@@ -245,5 +250,121 @@ def get_best_roi(cfg):
         print(f"#{rank:<4} {label:<44} {days:>7.2f} days")
 
 
+
+# ==============================================================================
+#  BUILD ORDER PLANNER
+#  Repeatedly picks the upgrade with the shortest payback, applies it to a copy
+#  of your empire, and re-ranks. Choosing Astrophysics adds a new planet with
+#  empty mines, so its build-up is planned alongside your other upgrades.
+# ==============================================================================
+def empire_hourly_mse(cfg):
+    total = [0, 0, 0]
+    for p in cfg["planets"]:
+        hp = planet_hourly_prod(p["mines"], p, cfg)
+        total = [a + b for a, b in zip(total, hp)]
+    return to_mse(total, cfg["trade_ratio"])
+
+def next_options(cfg):
+    """Every upgrade that can be done next: (payback_sec, cost_mse, action)."""
+    trade_rate = cfg["trade_ratio"]
+    options = []
+
+    for pi, p in enumerate(cfg["planets"]):
+        for tech_id in (1, 2, 3):
+            lvl = p["mines"][tech_id - 1] + 1
+            sec = roi_mine(tech_id, lvl, p, cfg)
+            cost = to_mse(building_cost(tech_id, lvl), trade_rate)
+            options.append((sec, cost, ("mine", pi, tech_id, lvl)))
+
+    plasma_lvl = cfg["plasma_tech"] + 1
+    options.append((roi_plasma(plasma_lvl, cfg),
+                    to_mse(research_cost(122, plasma_lvl), trade_rate),
+                    ("plasma", plasma_lvl)))
+
+    astro = cfg["astro_tech"]
+    astro_to = astro + 1 if (astro + 1) % 2 == 1 else astro + 2
+    n = len(cfg["planets"])
+    avg_mines = [sum(p["mines"][i] for p in cfg["planets"]) / n for i in range(3)]
+    sec = roi_astro(astro + 1, astro_to, avg_mines, empire_hourly_mse(cfg), cfg)
+    # Only the research is paid here; the new planet's mines are planned as separate steps
+    cost = sum(to_mse(research_cost(124, lvl), trade_rate) for lvl in range(astro + 1, astro_to + 1))
+    options.append((sec, cost, ("astro", astro_to)))
+    return options
+
+def apply_action(cfg, action):
+    kind = action[0]
+    if kind == "mine":
+        _, pi, tech_id, lvl = action
+        mines = list(cfg["planets"][pi]["mines"])
+        mines[tech_id - 1] = lvl
+        cfg["planets"][pi]["mines"] = tuple(mines)
+    elif kind == "plasma":
+        cfg["plasma_tech"] = action[1]
+    elif kind == "astro":
+        cfg["astro_tech"] = action[1]
+        new_planet = cfg.get("new_planet", {"pos": 8, "max_temp": 50})
+        cfg["_new_count"] = cfg.get("_new_count", 0) + 1
+        cfg["planets"].append({
+            "name": f"New Planet {cfg['_new_count']}",
+            "pos": new_planet["pos"],
+            "max_temp": new_planet["max_temp"],
+            "mines": (0, 0, 0),
+            "crawlers": 0,
+            "lf_planet_prod": (0.0, 0.0, 0.0),
+        })
+
+def plan_build_order(cfg):
+    state = copy.deepcopy(cfg)
+    steps = []  # (step_no, action, payback_sec, ready_day, label_before)
+    day = 0.0
+    for step in range(1, cfg.get("plan_steps", 150) + 1):
+        sec, cost, action = min(next_options(state), key=lambda o: o[0])
+        day += cost / (empire_hourly_mse(state) * 24)
+        if action[0] == "astro":
+            label = f"Research: Astrophysics {state['astro_tech']} -> {action[1]} (colonize {len(state['planets']) + 1}th planet)"
+        elif action[0] == "plasma":
+            label = f"Research: Plasma Tech {action[1] - 1} -> {action[1]}"
+        else:
+            label = None
+        planet_name = state["planets"][action[1]]["name"] if action[0] == "mine" else None
+        steps.append((step, action, sec, day, label, planet_name))
+        apply_action(state, action)
+
+    # Group consecutive mine steps on the same planet into one line
+    lines = []
+    for step, action, sec, day, label, planet_name in steps:
+        if action[0] == "mine":
+            _, _, tech_id, lvl = action
+            last = lines[-1] if lines else None
+            if last and last["planet"] == planet_name:
+                rng = last["ranges"].setdefault(tech_id, [lvl - 1, lvl])
+                rng[1] = lvl
+                last.update(end=step, sec=sec, day=day)
+                continue
+            lines.append({"planet": planet_name, "ranges": {tech_id: [lvl - 1, lvl]},
+                          "start": step, "end": step, "sec": sec, "day": day})
+        else:
+            lines.append({"planet": None, "label": label, "start": step, "end": step, "sec": sec, "day": day})
+
+    print(f"BUILD ORDER (next {len(steps)} upgrades, best payback first)")
+    print(f"{'STEP':<9} {'UPGRADE':<80} {'PAYBACK':>12} {'READY':>9}")
+    print("-" * 114)
+    for ln in lines:
+        steps_txt = f"{ln['start']}" if ln["start"] == ln["end"] else f"{ln['start']}-{ln['end']}"
+        if ln["planet"] is None:
+            text = ln["label"]
+        else:
+            parts = [f"{BUILDING_INFO[t]['name']} {a} -> {b}" for t, (a, b) in sorted(ln["ranges"].items())]
+            text = f"{ln['planet']}: " + ", ".join(parts)
+        payback = f"{ln['sec'] / 86400:.1f} days"
+        if ln["start"] != ln["end"]:
+            payback = "≤ " + payback
+        print(f"{steps_txt:<9} {text:<80} {payback:>12} {'day ' + format(ln['day'], '.1f'):>9}")
+    print("\nPAYBACK: of the step (or the slowest step in a grouped line).")
+    print("READY: day you could afford it if all production is saved for these upgrades, in this order.")
+
+
 if __name__ == "__main__":
     get_best_roi(CONFIG)
+    print()
+    plan_build_order(CONFIG)

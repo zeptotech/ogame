@@ -34,9 +34,18 @@ CONFIG = {
     #   "crawlers":       Number of crawlers on the planet (only used if limit_crawlers_to_owned is True)
     #   "lf_planet_prod": Optional planet-specific LF building bonus as decimals: (Metal%, Crystal%, Deut%)
     "planets": [
-        {"name": "Homeworld", "pos": 8,  "max_temp": 45,   "mines": (34, 30, 30), "crawlers": 750, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Colony 1",  "pos": 8,  "max_temp": 50,   "mines": (34, 30, 30), "crawlers": 750, "lf_planet_prod": (0.0, 0.0, 0.0)},
-        {"name": "Colony 2",  "pos": 15, "max_temp": -110, "mines": (33, 29, 31), "crawlers": 750, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 1",  "pos": 8, "max_temp": 33, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 2",  "pos": 8, "max_temp": 48, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 3",  "pos": 8, "max_temp": 59, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 4",  "pos": 8, "max_temp": 47, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 5",  "pos": 8, "max_temp": 38, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 6",  "pos": 8, "max_temp": 57, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 7",  "pos": 8, "max_temp": 66, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 8",  "pos": 8, "max_temp": 67, "mines": (42, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 9",  "pos": 8, "max_temp": 36, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 10", "pos": 8, "max_temp": 53, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 11", "pos": 8, "max_temp": 69, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
+        {"name": "Planet 12", "pos": 8, "max_temp": 49, "mines": (41, 35, 37), "crawlers": 994, "lf_planet_prod": (0.0, 0.0, 0.0)},
     ],
 
     # --- 6. SERVER CONSTANTS (Do not change unless playing a custom/special universe) ---

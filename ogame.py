@@ -346,11 +346,11 @@ def apply_action(cfg, action):
 
 def plan_build_order(cfg):
     state = copy.deepcopy(cfg)
-    steps = []  # (step_no, action, payback_sec, ready_day, label_before)
-    day = 0.0
+    steps = []  # (step_no, action, payback_sec, save_days, label, planet_name)
     for step in range(1, cfg.get("plan_steps", 150) + 1):
         sec, cost, action = min(next_options(state), key=lambda o: o[0])
-        day += cost / (empire_hourly_mse(state) * 24)
+        # Days of total empire production needed to pay for this step
+        save = cost / (empire_hourly_mse(state) * 24)
         if action[0] == "astro":
             label = f"Research: Astrophysics {state['astro_tech']} -> {action[1]} (colonize {len(state['planets']) + 1}th planet)"
         elif action[0] == "plasma":
@@ -358,28 +358,28 @@ def plan_build_order(cfg):
         else:
             label = None
         planet_name = state["planets"][action[1]]["name"] if action[0] == "mine" else None
-        steps.append((step, action, sec, day, label, planet_name))
+        steps.append((step, action, sec, save, label, planet_name))
         apply_action(state, action)
 
     # Group consecutive mine steps on the same planet into one line
     lines = []
-    for step, action, sec, day, label, planet_name in steps:
+    for step, action, sec, save, label, planet_name in steps:
         if action[0] == "mine":
             _, _, tech_id, lvl = action
             last = lines[-1] if lines else None
             if last and last["planet"] == planet_name:
                 rng = last["ranges"].setdefault(tech_id, [lvl - 1, lvl])
                 rng[1] = lvl
-                last.update(end=step, sec=sec, day=day)
+                last.update(end=step, sec=sec, save=last["save"] + save)
                 continue
             lines.append({"planet": planet_name, "ranges": {tech_id: [lvl - 1, lvl]},
-                          "start": step, "end": step, "sec": sec, "day": day})
+                          "start": step, "end": step, "sec": sec, "save": save})
         else:
-            lines.append({"planet": None, "label": label, "start": step, "end": step, "sec": sec, "day": day})
+            lines.append({"planet": None, "label": label, "start": step, "end": step, "sec": sec, "save": save})
 
     print(f"BUILD ORDER (next {len(steps)} upgrades, best payback first)")
-    print(f"{'STEP':<9} {'UPGRADE':<80} {'PAYBACK':>12} {'READY':>9}")
-    print("-" * 114)
+    print(f"{'STEP':<9} {'UPGRADE':<80} {'PAYBACK':>12} {'SAVE':>11}")
+    print("-" * 116)
     for ln in lines:
         steps_txt = f"{ln['start']}" if ln["start"] == ln["end"] else f"{ln['start']}-{ln['end']}"
         if ln["planet"] is None:
@@ -390,9 +390,9 @@ def plan_build_order(cfg):
         payback = f"{ln['sec'] / 86400:.1f} days"
         if ln["start"] != ln["end"]:
             payback = "≤ " + payback
-        print(f"{steps_txt:<9} {text:<80} {payback:>12} {'day ' + format(ln['day'], '.1f'):>9}")
+        print(f"{steps_txt:<9} {text:<80} {payback:>12} {format(ln['save'], '.1f') + ' days':>11}")
     print("\nPAYBACK: of the step (or the slowest step in a grouped line).")
-    print("READY: day you could afford it if all production is saved for these upgrades, in this order.")
+    print("SAVE: days of your total production needed to pay for the line (summed for grouped lines).")
 
 
 if __name__ == "__main__":

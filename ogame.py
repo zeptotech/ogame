@@ -28,6 +28,8 @@ import sys
 #   lf_class_bonus          LF boost to class bonuses, e.g. 0.15 for +15%
 #   lf_crawler_bonus        LF boost to crawler production, e.g. 0.20 for +20%
 #   lf_plasma_cost_reduction LF research discount on Plasma Tech cost, e.g. 0.1487 for -14.87%
+#   mine_cost_reduction     Default mine cost discount for every planet, e.g. 0.03 for
+#                           -3% from the Mineral Research Centre (as shown in game)
 #   --- Planets (update "mines" after each mine upgrade) ---
 #   planets                 List of planets, each with:
 #     name                  Any label
@@ -36,6 +38,7 @@ import sys
 #     mines                 [metal mine, crystal mine, deut synth] levels
 #     crawlers              Crawlers on the planet (only used if limit_crawlers_to_owned)
 #     lf_planet_prod        Optional planet LF building bonus [metal, crystal, deut]
+#     mine_cost_reduction   Optional per-planet override of the mine cost discount
 #   --- Build order planner (optional) ---
 #   plan_steps              How many single upgrades to plan ahead (default 150)
 #   new_planet              Assumed {"pos", "max_temp"} of planets colonized after Astrophysics
@@ -52,6 +55,7 @@ DEFAULTS = {
     "lf_class_bonus": 0.0,
     "lf_crawler_bonus": 0.0,
     "lf_plasma_cost_reduction": 0.0,
+    "mine_cost_reduction": 0.0,
     "plan_steps": 150,
     "new_planet": {"pos": 8, "max_temp": 50},
     # Server constants
@@ -91,6 +95,8 @@ def load_config(path):
 
     cfg = copy.deepcopy(DEFAULTS)
     cfg.update(data)
+    for p in cfg["planets"]:
+        p.setdefault("mine_cost_reduction", cfg["mine_cost_reduction"])
     return cfg
 
 # ==============================================================================
@@ -109,9 +115,9 @@ BUILDING_INFO = {
 def to_mse(res_tuple, trade_rate):
     return sum((x * trade_rate[0]) / trade_rate[i] for i, x in enumerate(res_tuple))
 
-def building_cost(tech_id, lvl):
+def building_cost(tech_id, lvl, cost_reduction=0.0):
     b = BUILDING_INFO[tech_id]
-    return tuple(math.floor(c * (b["factor"] ** (lvl - 1))) for c in b["base"])
+    return tuple(math.floor(c * (b["factor"] ** (lvl - 1)) * (1 - cost_reduction)) for c in b["base"])
 
 def research_cost(tech_id, lvl, cost_reduction=0.0):
     if tech_id == 122:
@@ -195,7 +201,7 @@ def roi_mine(tech_id, to_lvl, planet, cfg, from_lvl=None):
 
     cost_mse = 0
     for lvl in range(curr_lvls[tech_id - 1] + 1, to_lvl + 1):
-        cost_mse += to_mse(building_cost(tech_id, lvl), trade_rate)
+        cost_mse += to_mse(building_cost(tech_id, lvl, planet["mine_cost_reduction"]), trade_rate)
 
     return (cost_mse * 3600) / prod_diff_mse
 
@@ -231,7 +237,7 @@ def roi_astro(from_lvl, to_lvl, avg_mines, total_prod_mse, cfg):
     catchup_mse = 0
     for idx, tech_id in enumerate([1, 2, 3]):
         for lvl in range(1, int(avg_mines[idx]) + 1):
-            catchup_mse += to_mse(building_cost(tech_id, lvl), trade_rate)
+            catchup_mse += to_mse(building_cost(tech_id, lvl, cfg["mine_cost_reduction"]), trade_rate)
 
     total_cost_mse = research_mse + catchup_mse * new_planets
     prod_diff_mse = (total_prod_mse / num_planets) * new_planets
@@ -307,7 +313,7 @@ def next_options(cfg):
         for tech_id in (1, 2, 3):
             lvl = p["mines"][tech_id - 1] + 1
             sec = roi_mine(tech_id, lvl, p, cfg)
-            cost = to_mse(building_cost(tech_id, lvl), trade_rate)
+            cost = to_mse(building_cost(tech_id, lvl, p["mine_cost_reduction"]), trade_rate)
             options.append((sec, cost, ("mine", pi, tech_id, lvl)))
 
     plasma_lvl = cfg["plasma_tech"] + 1
@@ -345,6 +351,7 @@ def apply_action(cfg, action):
             "mines": (0, 0, 0),
             "crawlers": 0,
             "lf_planet_prod": (0.0, 0.0, 0.0),
+            "mine_cost_reduction": cfg["mine_cost_reduction"],
         })
 
 def plan_build_order(cfg):

@@ -13,16 +13,14 @@ python3 ogame.py other.json   # reads another empire file
 
 You only need Python 3; there are no dependencies.
 
-The script prints three tables:
+The script prints two tables:
 
 1. **Daily production:** your empire's current metal, crystal and deuterium
    per day, plus the total in MSE.
 
    *Note: Dueterium production does not take into account the amount deducted from fusion reactors*
    
-3. **Ranking:** the 20 single upgrades with the shortest payback, e.g.
-   `Centi: Metal Mine 41 -> 42   231.09 days`.
-4. **Build order:** a plan for the next `plan_steps` upgrades. It picks the
+2. **Build order:** a plan for the next `plan_steps` upgrades. It picks the
    best upgrade, applies it to a copy of your empire, ranks again, and so on.
    Choosing Astrophysics adds a new planet with no mines, and that planet's
    build-up is planned with everything else. Steps in a row on the same planet

@@ -184,11 +184,8 @@ def planet_hourly_prod(mine_lvls, planet, cfg, plasma_override=None):
         ))
     return totals
 
-def roi_mine(tech_id, to_lvl, planet, cfg, from_lvl=None):
-    # from_lvl: level assumed already built (defaults to the planet's current level)
+def roi_mine(tech_id, to_lvl, planet, cfg):
     curr_lvls = list(planet["mines"])
-    if from_lvl is not None:
-        curr_lvls[tech_id - 1] = from_lvl
     new_lvls = list(curr_lvls)
     new_lvls[tech_id - 1] = to_lvl
 
@@ -205,8 +202,8 @@ def roi_mine(tech_id, to_lvl, planet, cfg, from_lvl=None):
 
     return (cost_mse * 3600) / prod_diff_mse
 
-def roi_plasma(to_lvl, cfg, from_lvl=None):
-    plasma = cfg["plasma_tech"] if from_lvl is None else from_lvl
+def roi_plasma(to_lvl, cfg):
+    plasma = cfg["plasma_tech"]
     plasma_bonus = [p * (to_lvl - plasma) for p in PLASMATECH_BONUS]
     trade_rate = cfg["trade_ratio"]
     prod_diff_mse = 0
@@ -242,54 +239,6 @@ def roi_astro(from_lvl, to_lvl, avg_mines, total_prod_mse, cfg):
     total_cost_mse = research_mse + catchup_mse * new_planets
     prod_diff_mse = (total_prod_mse / num_planets) * new_planets
     return (total_cost_mse * 3600) / prod_diff_mse
-
-def get_best_roi(cfg):
-    results = []
-    num_planets = len(cfg["planets"])
-    avg_mines = [
-        sum(p["mines"][i] for p in cfg["planets"]) / num_planets for i in range(3)
-    ]
-    total_prod = [0, 0, 0]
-    for p in cfg["planets"]:
-        hp = planet_hourly_prod(p["mines"], p, cfg)
-        for i in range(3):
-            total_prod[i] += hp[i]
-    total_prod_mse = to_mse(total_prod, cfg["trade_ratio"])
-
-    # Like the extension: check each mine up to (highest level of that mine on any planet) + 5
-    max_mines = [max(p["mines"][i] for p in cfg["planets"]) for i in range(3)]
-    for p in cfg["planets"]:
-        for idx, tech_id in enumerate([1, 2, 3]):
-            curr = p["mines"][idx]
-            for target_lvl in range(curr + 1, max_mines[idx] + 6):
-                # One level per row: payback of this level alone, assuming the previous levels are built
-                sec = roi_mine(tech_id, target_lvl, p, cfg, from_lvl=target_lvl - 1)
-                results.append((sec, f"{p['name']}: {BUILDING_INFO[tech_id]['name']} {target_lvl - 1} -> {target_lvl}"))
-
-    p_lvl = cfg["plasma_tech"]
-    for step in range(1, 6):
-        sec = roi_plasma(p_lvl + step, cfg, from_lvl=p_lvl + step - 1)
-        results.append((sec, f"Research: Plasma Tech {p_lvl + step - 1} -> {p_lvl + step}"))
-
-    astro = cfg["astro_tech"]
-    start_step = 1 if (astro + 1) % 2 == 1 else 2
-    # One new planet slot per row: from the previous row's level to the next odd level
-    prev_lvl = astro
-    for step in range(start_step, 11, 2):
-        to_lvl = astro + step
-        sec = roi_astro(prev_lvl + 1, to_lvl, avg_mines, total_prod_mse, cfg)
-        results.append((sec, f"Research: Astrophysics {prev_lvl} -> {to_lvl}"))
-        prev_lvl = to_lvl
-
-    results.sort(key=lambda x: x[0])
-
-    print(f"{'RANK':<5} {'UPGRADE':<44} {'PAYBACK':>12}")
-    print("-" * 63)
-    for rank, (sec, label) in enumerate(results[:20], 1):
-        days = sec / 86400
-        print(f"#{rank:<4} {label:<44} {days:>7.2f} days")
-
-
 
 # ==============================================================================
 #  BUILD ORDER PLANNER
@@ -418,7 +367,5 @@ if __name__ == "__main__":
     default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "empire.json")
     cfg = load_config(sys.argv[1] if len(sys.argv) > 1 else default_path)
     print_daily_production(cfg)
-    print()
-    get_best_roi(cfg)
     print()
     plan_build_order(cfg)

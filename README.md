@@ -17,7 +17,9 @@ The script prints three tables:
 
 1. **Daily production:** your empire's current metal, crystal and deuterium
    per day, plus the total in MSE.
-   Note: Dueterium production does not take into account the amount deducted from fusion reactors
+
+   *Note: Dueterium production does not take into account the amount deducted from fusion reactors*
+   
 3. **Ranking:** the 20 single upgrades with the shortest payback, e.g.
    `Centi: Metal Mine 41 -> 42   231.09 days`.
 4. **Build order:** a plan for the next `plan_steps` upgrades. It picks the

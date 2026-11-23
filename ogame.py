@@ -27,6 +27,7 @@ import sys
 #   lf_global_prod          [metal, crystal, deut] production bonus, e.g. [0.12, 0.10, 0.08]
 #   lf_class_bonus          LF boost to class bonuses, e.g. 0.15 for +15%
 #   lf_crawler_bonus        LF boost to crawler production, e.g. 0.20 for +20%
+#   lf_plasma_cost_reduction LF research discount on Plasma Tech cost, e.g. 0.1487 for -14.87%
 #   --- Planets (update "mines" after each mine upgrade) ---
 #   planets                 List of planets, each with:
 #     name                  Any label
@@ -50,6 +51,7 @@ DEFAULTS = {
     "lf_global_prod": [0.0, 0.0, 0.0],
     "lf_class_bonus": 0.0,
     "lf_crawler_bonus": 0.0,
+    "lf_plasma_cost_reduction": 0.0,
     "plan_steps": 150,
     "new_planet": {"pos": 8, "max_temp": 50},
     # Server constants
@@ -111,12 +113,12 @@ def building_cost(tech_id, lvl):
     b = BUILDING_INFO[tech_id]
     return tuple(math.floor(c * (b["factor"] ** (lvl - 1))) for c in b["base"])
 
-def research_cost(tech_id, lvl):
+def research_cost(tech_id, lvl, cost_reduction=0.0):
     if tech_id == 122:
         base, factor = (2000, 4000, 1000), 2.0
     elif tech_id == 124:
         base, factor = (4000, 8000, 4000), 1.75
-    return tuple(math.floor(c * (factor ** (lvl - 1))) for c in base)
+    return tuple(math.floor(c * (factor ** (lvl - 1)) * (1 - cost_reduction)) for c in base)
 
 def mines_production(tech_id, lvl, pos, max_temp, speed):
     if lvl <= 0:
@@ -211,7 +213,8 @@ def roi_plasma(to_lvl, cfg, from_lvl=None):
         ]
         prod_diff_mse += to_mse(diff, trade_rate)
 
-    cost_mse = sum(to_mse(research_cost(122, lvl), trade_rate) for lvl in range(plasma + 1, to_lvl + 1))
+    cost_mse = sum(to_mse(research_cost(122, lvl, cfg["lf_plasma_cost_reduction"]), trade_rate)
+                   for lvl in range(plasma + 1, to_lvl + 1))
     return (cost_mse * 3600) / prod_diff_mse
 
 def astro_planet_slots(lvl):
@@ -309,7 +312,7 @@ def next_options(cfg):
 
     plasma_lvl = cfg["plasma_tech"] + 1
     options.append((roi_plasma(plasma_lvl, cfg),
-                    to_mse(research_cost(122, plasma_lvl), trade_rate),
+                    to_mse(research_cost(122, plasma_lvl, cfg["lf_plasma_cost_reduction"]), trade_rate),
                     ("plasma", plasma_lvl)))
 
     astro = cfg["astro_tech"]

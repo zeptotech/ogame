@@ -297,12 +297,24 @@ def get_best_roi(cfg):
 #  of your empire, and re-ranks. Choosing Astrophysics adds a new planet with
 #  empty mines, so its build-up is planned alongside your other upgrades.
 # ==============================================================================
-def empire_hourly_mse(cfg):
+def empire_hourly_prod(cfg):
+    """Hourly [metal, crystal, deut] summed over all planets."""
     total = [0, 0, 0]
     for p in cfg["planets"]:
         hp = planet_hourly_prod(p["mines"], p, cfg)
         total = [a + b for a, b in zip(total, hp)]
-    return to_mse(total, cfg["trade_ratio"])
+    return total
+
+def empire_hourly_mse(cfg):
+    return to_mse(empire_hourly_prod(cfg), cfg["trade_ratio"])
+
+def print_daily_production(cfg):
+    daily = [x * 24 for x in empire_hourly_prod(cfg)]
+    print(f"DAILY PRODUCTION ({len(cfg['planets'])} planets)")
+    print("-" * 30)
+    for name, amount in zip(("Metal", "Crystal", "Deuterium"), daily):
+        print(f"{name:<12} {amount:>17,}")
+    print(f"{'Total (MSE)':<12} {round(to_mse(daily, cfg['trade_ratio'])):>17,}")
 
 def next_options(cfg):
     """Every upgrade that can be done next: (payback_sec, cost_mse, action)."""
@@ -405,6 +417,8 @@ def plan_build_order(cfg):
 if __name__ == "__main__":
     default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "empire.json")
     cfg = load_config(sys.argv[1] if len(sys.argv) > 1 else default_path)
+    print_daily_production(cfg)
+    print()
     get_best_roi(cfg)
     print()
     plan_build_order(cfg)

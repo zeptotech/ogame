@@ -16,7 +16,7 @@
   "lf_class_bonus": 0.0,
   "lf_crawler_bonus": 0.0,
   "lf_plasma_cost_reduction": 0.1487,
-  "mine_cost_reduction": 0.03,
+  "mine_cost_reduction": 0.025,
 
   "planets": [
     {"name": "Centi",  "pos": 8, "max_temp": 33, "mines": [41, 35, 37], "crawlers": 994, "lf_planet_prod": [0.0, 0.0, 0.0]},

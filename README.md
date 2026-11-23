@@ -18,7 +18,7 @@ The script prints two tables:
 1. **Daily production:** your empire's current metal, crystal and deuterium
    per day, plus the total in MSE.
 
-   *Note: Dueterium production does not take into account the amount deducted from fusion reactors*
+   *Note: Deuterium production does not take into account the amount deducted from fusion reactors*
    
 2. **Build order:** a plan for the next `plan_steps` upgrades. It picks the
    best upgrade, applies it to a copy of your empire, ranks again, and so on.
